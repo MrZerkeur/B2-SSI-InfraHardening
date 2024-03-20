@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  mariadb:
+    image: mariadb:11.3.2
+    container_name: mariadb-container
+    environment:
+      MYSQL_ROOT_PASSWORD: mysecretpassword
+      MYSQL_DATABASE: website
+      MYSQL_USER: maria-woman
+      MYSQL_PASSWORD: oui
+    ports:
+      - "3306:3306"
