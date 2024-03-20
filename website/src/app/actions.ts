@@ -31,13 +31,11 @@ export const login = async (prevState: { error: undefined | string }, formData: 
     const session = await getSession();
 
     const formUsername = formData.get("username") as string;
-    if (formUsername.length > 24) {
-        return {error:"Username must have less than 24 characters"};
+    
+    const [sanitizedUsername, error] = sanitizeUsername(formUsername);
+    if (!sanitizedUsername) {
+        return error;
     }
-
-    // TODO - SANITIZE the username
-    // const regex = new RegExp('^[A-Za-z][A-Za-z0-9_]{0,23}$'); 
-    const sanitizedUsername = formUsername;
 
     const formPassword = formData.get("password") as string;
 
@@ -78,6 +76,12 @@ export const logout = async () => {
 
 export const register = async (prevState: { error: undefined | string }, formData: FormData) => {
     const formUsername = formData.get("username") as string;
+
+    const [sanitizedUsername, error] = sanitizeUsername(formUsername);
+    if (!sanitizedUsername) {
+        return error;
+    }
+
     const formPassword1 = formData.get("password1") as string;
     const formPassword2 = formData.get("password2") as string;
 
@@ -101,6 +105,24 @@ async function hashPassword(plainTextPassword: string): Promise<[string, string]
     const hashedPassword = await bcrypt.hash(plainTextPassword, salt);
   
     return [hashedPassword, salt];
+}
+
+// Sanitize function
+
+function sanitizeUsername(username: string): [undefined | string, { error: undefined | string }] {
+    const trimmedUsername = username.trim().replace(/\s+/g, ''); // remove all spaces
+
+    if (trimmedUsername.length > 24) {
+        return [undefined, { error: "Username must have less than 25 characters" }];
+    }
+
+    const regex = new RegExp('^[A-Za-z][A-Za-z0-9]{0,23}$');
+    const usernameValid: boolean = regex.test(trimmedUsername);
+
+    if (!usernameValid) {
+        return [undefined, { error: "Username must have less than 25 characters, start with a letter and only contain letters or numbers" }];
+    }
+    return [trimmedUsername, { error: undefined }]
 }
 
 // Database functions
