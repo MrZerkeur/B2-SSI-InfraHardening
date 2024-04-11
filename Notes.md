@@ -28,6 +28,11 @@ sudo firewall-cmd --reload
 Puis reboot le système (ça marche surement aussi en relançant les conteneurs docker mais pas testé)
 
 
+# PROBLÈMES RENCONTRÉS
+
+Debian 12 n'utilise plus rsyslog mais journalctl, donc il faut réinstaller rsyslog et le configurer pour le faire marcher avec wazuh => chiant donc préfère down grade à debian 11 pour que ça marche "out of the box"
+
+
 # Configuration de wazuh
 
 - Ignorer les alertes sur /bin/diff, c'est un faux positif connu
@@ -68,6 +73,19 @@ Pour wazuh manager, ajouter ça dans /var/ossec/etc/rules/local_rules.xml
 </group>
 ```
 
-- Détecter SSH brute-force /!\ EN COURS /!\
+```
+service wazuh-manager restart
+```
+
+- Détecter SSH brute-force /!\ PROBLEME RESOLU /!\
+
+Sur debian 12 rsyslog n'est pas installé par défaut, il faut donc l'installer sinon pas de fichiers de log et tout sera sur journalctl
+
+- Active-response SSH brute-force /!\ EN COURS /!\
+
+
+
 
 - Mettre en place les alertes par mail /!\ EN COURS /!\
+
+- 
