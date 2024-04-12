@@ -35,8 +35,9 @@ Debian 12 n'utilise plus rsyslog mais journalctl, donc il faut réinstaller rsys
 
 # Configuration de wazuh
 
-- Ignorer les alertes sur /bin/diff, c'est un faux positif connu
-- Changer le niveau d'alerte de déconnexion, arrêt et suppression de l'agent wazuh de 3 à 12
+/!\ Ignorer les alertes sur /bin/diff, c'est un faux positif connu /!\
+
+- ## Changer le niveau d'alerte de déconnexion, arrêt et suppression de l'agent wazuh de 3 à 12
 
 Pour wazuh manager, ajouter ça dans /var/ossec/etc/rules/local_rules.xml
 ```
@@ -77,15 +78,69 @@ Pour wazuh manager, ajouter ça dans /var/ossec/etc/rules/local_rules.xml
 service wazuh-manager restart
 ```
 
-- Détecter SSH brute-force /!\ PROBLEME RESOLU /!\
+- ## Détecter SSH brute-force /!\ PROBLEME RESOLU /!\
 
 Sur debian 12 rsyslog n'est pas installé par défaut, il faut donc l'installer sinon pas de fichiers de log et tout sera sur journalctl
 
-- Active-response SSH brute-force /!\ EN COURS /!\
+- ## Active-response SSH brute-force
 
+Ajouter ça dans la partie active response de /var/ossec/etc/ossec.conf, dans le conteneurs de wazuh manager :
+```
+<command>firewall-drop</command>
+<location>local</location>
+<rules_id>5710, 5760</rules_id>
+<timeout>180</timeout>
+```
 
+- ## Ajout de NGINX
+
+Pour que nginx puisse fonctionner en HTTPS, re-mapper les ports de wazuh dashboard (443) vers un autre (ici 5601) en modifiant le docker compose.
+
+- ## File integrity monitoring /!\ EN COURS /!\
+
+Activé par défaut, on peut ajouter des répertoires à vérifier dans /var/ossec/etc/ossec.conf
+
+```
+  <syscheck>
+    <!-- Directories to check  (perform all possible verifications) -->
+    <directories>/etc,/usr/bin,/usr/sbin</directories>
+    <directories>/bin,/sbin,/boot</directories>
+  </syscheck>
+```
+
+```
+service wazuh-manager restart
+```
+
+- ## Vulnerability detection /!\ EN COURS /!\
+
+Dans /var/ossec/etc/ossec.conf, passer <enabled>no</enabled> à <enabled>yes</enabled> pour <vulnerability-detector> et pour l'OS correspondant
+```
+<vulnerability-detector>
+    <enabled>yes</enabled>
+...
+...
+...
+    <!-- Debian OS vulnerabilities -->
+    <provider name="debian">
+      <enabled>yes</enabled>
+      <os>buster</os>
+      <os>bullseye</os>
+      <os>bookworm</os>
+      <update_interval>1h</update_interval>
+    </provider>
+```
+
+```
+service wazuh-manager restart
+```
+
+PAS FINI, SEVERITÉ EN "UNTRIAGED"
+https://documentation.wazuh.com/current/user-manual/capabilities/vulnerability-detection/configuring-scans.html
 
 
 - Mettre en place les alertes par mail /!\ EN COURS /!\
 
-- 
+
+
+- Intégration suricata => fuzzing, directory brute-force, etc...
