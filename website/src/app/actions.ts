@@ -4,9 +4,11 @@ import { sessionOptions, SessionData, defaultSession } from "./lib"
 import { cookies } from 'next/headers'
 import mariadb from 'mariadb';
 import bcrypt from 'bcrypt';
+import path from "path";
 import { redirect } from "next/navigation";
+import { writeFile } from "fs/promises";
 
-// Database pool for connection
+// * Database pool for connection
 
 const pool = mariadb.createPool({
     host: 'localhost',
@@ -15,7 +17,7 @@ const pool = mariadb.createPool({
     database: 'website'
 });
 
-// Authentication system
+// * Authentication system
 
 export const getSession = async () => {
     const session = await getIronSession<SessionData>(cookies(), sessionOptions);
@@ -96,7 +98,7 @@ export const register = async (prevState: { error: undefined | string }, formDat
     redirect('/login');
 }
 
-// Password Hasher (bcrypt used)
+// * Password Hasher (bcrypt used)
 
 async function hashPassword(plainTextPassword: string): Promise<[string, string]> {
     const saltRounds = 10; // You can adjust the number of rounds based on your security requirements
@@ -107,7 +109,7 @@ async function hashPassword(plainTextPassword: string): Promise<[string, string]
     return [hashedPassword, salt];
 }
 
-// Sanitize function
+// * Sanitize function
 
 function sanitizeUsername(username: string): [undefined | string, { error: undefined | string }] {
     const trimmedUsername = username.trim().replace(/\s+/g, ''); // remove all spaces
@@ -125,7 +127,7 @@ function sanitizeUsername(username: string): [undefined | string, { error: undef
     return [trimmedUsername, { error: undefined }]
 }
 
-// Database functions
+// * Database functions
 
 async function createNewUser(username: string, hashedPassword: string, salt: string) {
     let conn;
@@ -184,4 +186,76 @@ async function getUserInfo(username: string): Promise<[string, boolean]> {
         if (conn) conn.release(); // release to pool
         return [userId, isAdmin];
     }
+}
+
+// * Contact form
+
+export const contact = async(formData: FormData) => {
+  console.log(formData);
+  const firstName = formData.get('firstName') as string;
+  const lastName = formData.get('lastName') as string;
+  const email = formData.get('email') as string;
+  const tel = formData.get('tel') as string | null;
+  const message = formData.get('message') as string;
+  const file = formData.get('file') as File;
+  let filePath = null
+  if (file) {
+    filePath = await uploadFile(file);
+  }
+  await addNewContactForm(firstName, lastName, email, message, tel, filePath)
+}
+
+async function addNewContactForm(firstName : string, lastName : string, email : string, message : string, tel : string | null, file_path: string | null) {
+  let conn;
+    try {
+        conn = await pool.getConnection();
+        const query = await conn.prepare("INSERT INTO contact_forms (first_name, last_name, email, message, tel, file_path) VALUES (?, ?, ?, ?, ?, ?)");
+        await query.execute([firstName, lastName, email, message, tel, file_path]);
+    } finally {
+        if (conn) conn.release(); // release to pool
+    }
+}
+
+async function uploadFile(file: File): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const filename =  file.name.replaceAll(" ", "_");
+  const filePath = path.join(process.cwd(), "public/assets/" + filename);
+  await writeFile(
+    path.join(filePath),
+    buffer
+  );
+  return filePath;
+}
+
+export interface ContactForm {
+  firstName: string;
+  lastName: string;
+  email: string;
+  message: string;
+  tel: string;
+  filePath: string;
+}
+
+export async function getAllContactForms(): Promise<ContactForm[]> {
+  const contactForms: ContactForm[] = [];
+  let conn;
+  try {    
+    conn = await pool.getConnection();
+    const query =  await conn.prepare("SELECT first_name, last_name, email, message, tel, file_path FROM contact_forms");
+    const rows = await query.execute();
+    for (const row of rows) {
+      const contactForm: ContactForm = {
+        firstName: row["first_name"],
+        lastName: row["last_name"],
+        email: row["email"],
+        message: row["message"],
+        tel: row["tel"],
+        filePath: row["file_path"],
+      };
+      contactForms.push(contactForm)
+    }
+  } finally {
+    if (conn) conn.release(); // release to pool
+    return contactForms;
+  }
 }
