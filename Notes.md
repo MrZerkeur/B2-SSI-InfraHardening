@@ -281,12 +281,49 @@ timedatectl set-timezone Europe/Paris
 ## Mettre en place les alertes par mail /!\ EN COURS /!\
 
 
-# SSH Configuration hardening
+# SSH Configuration hardening /!\ EN COURS /!\
 
 [SSH conf](./sshd_config)
 
-*Ajouter les explications pour chaque ligne*
-*Ajouter la connexion uniquement par clé*
+Autoriser seulement certains utilisateurs :
+```
+AllowUsers axel
+```
+
+Désactiver la connexion par mot de passe :
+```
+PasswordAuthentication no
+```
+
+Rendre le login plus verbeux :
+```
+LogLevel VERBOSE
+```
+
+Laisser 60 secondes à l'utilisateur pour entrer son mot de passe ou sa clé :
+```
+LoginGraceTime 60
+```
+
+Désactiver la possibilité de connexion pour root :
+```
+PermitRootLogin no
+```
+
+Laisser 4 essais à l'utlisateur pour se connecter :
+```
+MaxAuthTries 4
+```
+
+
+
+
+
+
+
+
+
+
 
 # NGINX Configuration hardening
 
@@ -322,3 +359,10 @@ service wazuh-manager restart
 ---
 /!\ /var/ossec/etc/ossec.conf EST RÉINITIALISÉ SI LE CONTENEUR MANAGER EST STOPPÉ, TROUVER UN MOYEN POUR QUE ÇA N'ARRIVE PAS /!\
 Plutôt modifier directement les fichiers sur la machine au lieu du conteneur et dans ce cas redémarrer tout le conteneur ?
+
+
+
+
+
+
+https://wazuh.com/blog/monitoring-root-actions-on-linux-using-auditd-and-wazuh/

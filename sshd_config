@@ -1,9 +1,10 @@
 Include /etc/ssh/sshd_config.d/*.conf
 AllowUsers axel
+PasswordAuthentication no
 LogLevel VERBOSE
 LoginGraceTime 60
 PermitRootLogin no
-MaxAuthTries 4 
+MaxAuthTries 4
 MaxSessions 10
 AuthorizedKeysFile	.ssh/authorized_keys
 HostbasedAuthentication no
