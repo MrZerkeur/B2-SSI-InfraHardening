@@ -1,13 +1,15 @@
 version: '3.8'
 
 services:
-  mariadb:
+  db:
     image: mariadb:11.3.2
     container_name: mariadb-container
     environment:
-      MYSQL_ROOT_PASSWORD: mysecretpassword
+      MYSQL_ROOT_PASSWORD: 7MpUmdTF&hc%2Tvx~6P+bOTyR)W8wL8$A1~q$xYCaos#2knVD
       MYSQL_DATABASE: website
       MYSQL_USER: maria-woman
-      MYSQL_PASSWORD: oui
+      MYSQL_PASSWORD: V{Xeh]aO5x)u_nz4qGZJnc)RiQDb9O0Pr$J3!p4Y}12)=YJR
     ports:
       - "3306:3306"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql

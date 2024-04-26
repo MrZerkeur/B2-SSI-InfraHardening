@@ -59,7 +59,8 @@ export default async function Admin() {
                     {contactForm.tel}
                   </td>
                   <td className="px-6 py-4">
-                    <Image src={contactForm.filePath.substring(contactForm.filePath.indexOf('/public'))} alt={contactForm.filePath} width={100} height={100} />
+                    {contactForm.filePath && 
+                    <Image src={'/' + contactForm.filePath.substring(contactForm.filePath.indexOf('\assets'))} alt={contactForm.filePath} width={100} height={100} />}
                   </td>
                 </tr>
               ))}
