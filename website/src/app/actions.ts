@@ -11,9 +11,9 @@ import { writeFile } from "fs/promises";
 // * Database pool for connection
 
 const pool = mariadb.createPool({
-    host: 'localhost',
+    host: '127.0.0.1',
     user: 'maria-woman',
-    password: 'oui',
+    password: 'V{Xeh]aO5x)u_nz4qGZJnc)RiQDb9O0Pr$J3!p4Y}12)=YJR',
     database: 'website'
 });
 
@@ -199,7 +199,7 @@ export const contact = async(formData: FormData) => {
   const message = formData.get('message') as string;
   const file = formData.get('file') as File;
   let filePath = null
-  if (file) {
+  if (file.name != 'undefined' && file.size != 0 && file.type != 'application/octet-stream') {
     filePath = await uploadFile(file);
   }
   await addNewContactForm(firstName, lastName, email, message, tel, filePath)
