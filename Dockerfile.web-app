@@ -24,4 +24,4 @@ RUN chsh -s /usr/sbin/nologin root
 
 USER ${uid}:${gid}
 
-CMD ["npm", "run", "dev"]
+CMD [ "npm", "run", "dev" ]
