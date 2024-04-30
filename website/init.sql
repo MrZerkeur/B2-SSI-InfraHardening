@@ -28,8 +28,8 @@ CREATE TABLE contact_forms (
 
 INSERT INTO users (hashed_password, salt, is_admin, username)
 VALUES (
-    '$2a$10$V0MGfWeg9aq1yCJV/cxQH.gKbhTJEGDBKd653qGr3b8zevszlqzoi',
-    '$2a$10$V0MGfWeg9aq1yCJV/cxQH.',
+    '$2a$10$uqAx2HNNiW0CYPt4MG5ZYOQCOkS0QoWVkzzUqQ3UDgC80PpeT2NxK',
+    '$2a$10$uqAx2HNNiW0CYPt4MG5ZYO',
     1,
     'LAdminTroSympaLeMeilleur'
 );
