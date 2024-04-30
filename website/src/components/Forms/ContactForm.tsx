@@ -27,7 +27,7 @@ export default function ContactForm() {
         <label htmlFor="file">Image (optionnelle)</label>
         <input type="file" name="file" id="file" accept="image/*"/>
       </div>
-      <button className="text-white">Envoyer</button>
+      <button className="text-black">Envoyer</button>
     </form>
   )
 }

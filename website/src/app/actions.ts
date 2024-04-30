@@ -7,14 +7,13 @@ import bcrypt from 'bcrypt';
 import path from "path";
 import { redirect } from "next/navigation";
 import { writeFile } from "fs/promises";
-import { z } from "zod";
 
 // * Database pool for connection
 
 const pool = mariadb.createPool({
     host: 'db',
     user: 'maria-woman',
-    password: 'coucou',
+    password: 'YO.QS[FmFxY+Tty5Y-B6y8wbq+%Li_It',
     database: 'website'
 });
 

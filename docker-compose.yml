@@ -5,15 +5,15 @@ services:
     image: test-secu
     ports:
       - "127.0.0.1:3000:3000"
-  
+
   db:
     image: mariadb:11.3.2
     container_name: mariadb-container
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: s#rg.26tI&8z=mLaLcpuSG]@5H}R(Ype
       MYSQL_DATABASE: website
       MYSQL_USER: maria-woman
-      MYSQL_PASSWORD: coucou
+      MYSQL_PASSWORD: YO.QS[FmFxY+Tty5Y-B6y8wbq+%Li_It
       MYSQL_ALLOW_EMPTY_PASSWORD: no
     ports:
       - "3306:3306"
