@@ -20,6 +20,8 @@ RUN npm install iron-session
 
 RUN chown -R ${user} .
 
+RUN chsh -s /usr/sbin/nologin root 
+
 USER ${uid}:${gid}
 
 CMD ["npm", "run", "dev"]
