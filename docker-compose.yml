@@ -1,7 +1,21 @@
-version: '3'
+version: '3.8'
 
 services:
   app:
     image: test-secu
     ports:
       - "127.0.0.1:3000:3000"
+  
+  db:
+    image: mariadb:11.3.2
+    container_name: mariadb-container
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: website
+      MYSQL_USER: maria-woman
+      MYSQL_PASSWORD: coucou
+      MYSQL_ALLOW_EMPTY_PASSWORD: no
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql

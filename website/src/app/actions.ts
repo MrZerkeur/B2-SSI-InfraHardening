@@ -7,13 +7,14 @@ import bcrypt from 'bcrypt';
 import path from "path";
 import { redirect } from "next/navigation";
 import { writeFile } from "fs/promises";
+import { z } from "zod";
 
 // * Database pool for connection
 
 const pool = mariadb.createPool({
-    host: '127.0.0.1',
+    host: 'db',
     user: 'maria-woman',
-    password: 'V{Xeh]aO5x)u_nz4qGZJnc)RiQDb9O0Pr$J3!p4Y}12)=YJR',
+    password: 'coucou',
     database: 'website'
 });
 
@@ -135,6 +136,8 @@ async function createNewUser(username: string, hashedPassword: string, salt: str
         conn = await pool.getConnection();
         const query = await conn.prepare("INSERT INTO users (username, hashed_password, salt, is_admin) VALUES (?, ?, ?, FALSE)");
         await query.execute([username, hashedPassword, salt]);
+    } catch {
+        redirect('/register')
     } finally {
         if (conn) conn.release(); // release to pool
     }
@@ -179,7 +182,6 @@ async function getUserInfo(username: string): Promise<[string, boolean]> {
         conn = await pool.getConnection();
         const query =  await conn.prepare("SELECT user_id, is_admin FROM users WHERE username = ?");
         const result = await query.execute([username]);
-
         userId = result[0]["user_id"];
         isAdmin = result[0]["is_admin"];
     } finally {
@@ -191,18 +193,23 @@ async function getUserInfo(username: string): Promise<[string, boolean]> {
 // * Contact form
 
 export const contact = async(formData: FormData) => {
-  console.log(formData);
   const firstName = formData.get('firstName') as string;
   const lastName = formData.get('lastName') as string;
   const email = formData.get('email') as string;
   const tel = formData.get('tel') as string | null;
   const message = formData.get('message') as string;
+  
+  if (!validateContactFormData(firstName, lastName, email, message, tel)) {
+    redirect('/contact')
+  }
+
   const file = formData.get('file') as File;
   let filePath = null
   if (file.name != 'undefined' && file.size != 0 && file.type != 'application/octet-stream') {
     filePath = await uploadFile(file);
   }
   await addNewContactForm(firstName, lastName, email, message, tel, filePath)
+  redirect('/profile')
 }
 
 async function addNewContactForm(firstName : string, lastName : string, email : string, message : string, tel : string | null, file_path: string | null) {
@@ -258,4 +265,24 @@ export async function getAllContactForms(): Promise<ContactForm[]> {
     if (conn) conn.release(); // release to pool
     return contactForms;
   }
+}
+
+function validateContactFormData(firstName : string, lastName : string, email : string, message : string, tel : string | null): boolean {
+  const alphaRegex = /^[A-Za-z]{1,100}$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^[0-9]{10}$/;
+
+  const isValidFirstName = alphaRegex.test(firstName);
+  const isValidLastName = alphaRegex.test(lastName);
+  const isValidEmail = emailRegex.test(email);
+  const isValidTel = tel === null || phoneRegex.test(tel);
+  const isValidMessage = (/^[A-Za-z0-9',;.:?!]{1,300}$/).test(message);
+
+  return (
+    isValidFirstName &&
+    isValidLastName &&
+    isValidEmail &&
+    isValidTel &&
+    isValidMessage
+  );
 }

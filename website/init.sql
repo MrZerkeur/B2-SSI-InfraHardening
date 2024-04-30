@@ -1,5 +1,8 @@
 CREATE DATABASE IF NOT EXISTS website;
 
+GRANT ALL PRIVILEGES ON website.* TO 'maria-woman'@'%' IDENTIFIED BY 'V{Xeh]aO5x)u_nz4qGZJnc)RiQDb9O0Pr$J3!p4Y}12)=YJR';
+FLUSH PRIVILEGES;
+
 USE website;
 
 CREATE TABLE users (
@@ -17,7 +20,7 @@ CREATE TABLE contact_forms (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL,
-    tel VARCHAR(20) NOT NULL,
+    tel VARCHAR(10) NOT NULL,
     file_path VARCHAR(255),
     message VARCHAR(300) NOT NULL,
     PRIMARY KEY (id)
