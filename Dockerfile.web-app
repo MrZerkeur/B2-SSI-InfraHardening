@@ -1,0 +1,25 @@
+FROM node:22
+
+ARG user=appuser
+ARG group=appuser
+ARG uid=1001
+ARG gid=1001
+RUN groupadd -g ${gid} ${group}
+RUN useradd -u ${uid} -g ${group} -s /bin/sh -m ${user}
+
+COPY website /website
+
+WORKDIR /website
+
+ENV SECRET_KEY=d8141cxkMIaNn5mvvl2A+VYAm40SHYaurBV7riC0FEU=
+ENV NODE_ENV=development
+
+RUN npm install
+
+RUN npm install iron-session
+
+RUN chown -R ${user} .
+
+USER ${uid}:${gid}
+
+CMD ["npm", "run", "dev"]

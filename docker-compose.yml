@@ -2,7 +2,8 @@ version: '3.8'
 
 services:
   app:
-    image: test-secu
+    build:
+      dockerfile: Dockerfile.web-app
     ports:
       - "127.0.0.1:3000:3000"
 
@@ -10,12 +11,12 @@ services:
     image: mariadb:11.3.2
     container_name: mariadb-container
     environment:
-      MYSQL_ROOT_PASSWORD: s#rg.26tI&8z=mLaLcpuSG]@5H}R(Ype
+      MYSQL_ROOT_PASSWORD: coucou
       MYSQL_DATABASE: website
       MYSQL_USER: maria-woman
-      MYSQL_PASSWORD: YO.QS[FmFxY+Tty5Y-B6y8wbq+%Li_It
+      MYSQL_PASSWORD: coucou
       MYSQL_ALLOW_EMPTY_PASSWORD: no
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./website/init.sql:/docker-entrypoint-initdb.d/init.sql
