@@ -191,15 +191,17 @@ async function getUserInfo(username: string): Promise<[string, boolean]> {
 
 // * Contact form
 
-export const contact = async(formData: FormData) => {
+export const contact = async(prevState: { error: undefined | string }, formData: FormData) => {
   const firstName = formData.get('firstName') as string;
   const lastName = formData.get('lastName') as string;
   const email = formData.get('email') as string;
   const tel = formData.get('tel') as string | null;
   const message = formData.get('message') as string;
+
+  const [isValid, error] = validateContactFormData(firstName, lastName, email, message, tel)
   
-  if (!validateContactFormData(firstName, lastName, email, message, tel)) {
-    redirect('/contact')
+  if (!isValid) {
+      return error;
   }
 
   const file = formData.get('file') as File;
@@ -212,7 +214,7 @@ export const contact = async(formData: FormData) => {
 }
 
 async function addNewContactForm(firstName : string, lastName : string, email : string, message : string, tel : string | null, file_path: string | null) {
-  let conn;
+    let conn;
     try {
         conn = await pool.getConnection();
         const query = await conn.prepare("INSERT INTO contact_forms (first_name, last_name, email, message, tel, file_path) VALUES (?, ?, ?, ?, ?, ?)");
@@ -266,22 +268,28 @@ export async function getAllContactForms(): Promise<ContactForm[]> {
   }
 }
 
-function validateContactFormData(firstName : string, lastName : string, email : string, message : string, tel : string | null): boolean {
+function validateContactFormData(firstName : string, lastName : string, email : string, message : string, tel : string | null): [boolean, { error: undefined | string }] {
   const alphaRegex = /^[A-Za-z]{1,100}$/;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneRegex = /^[0-9]{10}$/;
 
-  const isValidFirstName = alphaRegex.test(firstName);
-  const isValidLastName = alphaRegex.test(lastName);
-  const isValidEmail = emailRegex.test(email);
-  const isValidTel = tel === null || phoneRegex.test(tel);
-  const isValidMessage = (/^[A-Za-z0-9',;.:?!]{1,300}$/).test(message);
+  if (!alphaRegex.test(firstName)) {
+    return [false, { error: "Le prénom doit contenir moins de 100 caractères et seulement des lettres majusctules ou miniscules" }]
+  }
+  if (!alphaRegex.test(lastName)) {
+    return [false, { error: "Le nom doit contenir moins de 100 caractères et seulement des lettres majusctules ou miniscules" }]
+  }
+  if (!emailRegex.test(email)) {
+    return [false, { error: "Veuillez entrer une adresse mail valide" }]
+  }
+  if (tel !== null && !phoneRegex.test(tel)) {
+    return [false, { error: "Le numéro de téléphone doit contenir 10 chiffres" }]
+  }
+  if (!(/^[A-Za-z0-9',;.:?!]{1,300}$/).test(message)) {
+    return [false, { error: "Le message doit contenir au maximum 300 caractères et seuls les caratères alphanumériques et ',;.:?! sont acceptés" }]
+  }
 
   return (
-    isValidFirstName &&
-    isValidLastName &&
-    isValidEmail &&
-    isValidTel &&
-    isValidMessage
+    [true, { error: undefined }]
   );
 }
