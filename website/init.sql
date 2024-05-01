@@ -1,8 +1,5 @@
 CREATE DATABASE IF NOT EXISTS website;
 
-GRANT ALL PRIVILEGES ON website.* TO 'maria-woman'@'%' IDENTIFIED BY 'V{Xeh]aO5x)u_nz4qGZJnc)RiQDb9O0Pr$J3!p4Y}12)=YJR';
-FLUSH PRIVILEGES;
-
 USE website;
 
 CREATE TABLE users (

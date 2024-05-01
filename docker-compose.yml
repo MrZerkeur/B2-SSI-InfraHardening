@@ -1,22 +1,22 @@
 version: '3.8'
 
 services:
-  app:
-    build:
-      context: ./website
-      dockerfile: Dockerfile.test
-    ports:
-      - "127.0.0.1:3000:3000"
+  # app:
+  #   build:
+  #     context: ./website
+  #     dockerfile: Dockerfile.test
+  #   ports:
+  #     - "127.0.0.1:3000:3000"
 
   db:
     image: mariadb:11.3.2
     container_name: mariadb-container
     environment:
-      MYSQL_ROOT_PASSWORD: coucou
-      MYSQL_DATABASE: website
-      MYSQL_USER: maria-woman
-      MYSQL_PASSWORD: coucou
       MYSQL_ALLOW_EMPTY_PASSWORD: no
+      MYSQL_ROOT_PASSWORD: caca
+      MYSQL_DATABASE: website
+      MYSQL_USER: maria
+      MYSQL_PASSWORD: coucou
     ports:
       - "127.0.0.1:3306:3306"
     volumes:

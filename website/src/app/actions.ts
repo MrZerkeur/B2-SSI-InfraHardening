@@ -12,7 +12,7 @@ import { writeFile } from "fs/promises";
 
 const pool = mariadb.createPool({
     host: 'db',
-    user: 'root',
+    user: 'maria',
     password: 'coucou',
     database: 'website'
 });
