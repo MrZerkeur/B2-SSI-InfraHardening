@@ -1,4 +1,4 @@
-FROM node:22
+FROM node:20.9
 
 ARG user=appuser
 ARG group=appuser
@@ -12,11 +12,13 @@ COPY website /website
 WORKDIR /website
 
 ENV SECRET_KEY=d8141cxkMIaNn5mvvl2A+VYAm40SHYaurBV7riC0FEU=
-ENV NODE_ENV=development
+ENV NODE_ENV=production
 
 RUN npm install
 
 RUN npm install iron-session
+
+RUN npm run build
 
 RUN chown -R ${user} .
 
@@ -24,4 +26,4 @@ RUN chsh -s /usr/sbin/nologin root
 
 USER ${uid}:${gid}
 
-CMD [ "npm", "run", "dev" ]
+CMD [ "npm", "run", "start" ]
