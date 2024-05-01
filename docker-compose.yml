@@ -1,12 +1,12 @@
 version: '3.8'
 
 services:
-  # app:
-  #   build:
-  #     context: ./website
-  #     dockerfile: Dockerfile.test
-  #   ports:
-  #     - "127.0.0.1:3000:3000"
+  app:
+    build:
+      context: ./website
+      dockerfile: Dockerfile.test
+    ports:
+      - "127.0.0.1:3000:3000"
 
   db:
     image: mariadb:11.3.2
