@@ -13,10 +13,10 @@ services:
     container_name: mariadb-container
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: no
-      MYSQL_ROOT_PASSWORD: caca
+      MYSQL_ROOT_PASSWORD: bZzr?w)0VYq]H~wYUK2U__rDq)iCr!
       MYSQL_DATABASE: website
       MYSQL_USER: maria
-      MYSQL_PASSWORD: coucou
+      MYSQL_PASSWORD: viV%p1Bi.D!x]VThW+dyR2J?_})zu^
     ports:
       - "127.0.0.1:3306:3306"
     volumes:
