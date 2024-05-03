@@ -361,8 +361,13 @@ service wazuh-manager restart
 Plutôt modifier directement les fichiers sur la machine au lieu du conteneur et dans ce cas redémarrer tout le conteneur ?
 
 
-
+/!\ RESOLU, il faut modifier wazuh-docker/single-node/config/wazuh_cluster/wazuh_manager.conf pour que les modifications soient persistantes
 
 
 
 https://wazuh.com/blog/monitoring-root-actions-on-linux-using-auditd-and-wazuh/
+
+
+
+
+
