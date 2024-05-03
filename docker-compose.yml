@@ -4,7 +4,7 @@ services:
   app:
     build:
       context: ./website
-      dockerfile: Dockerfile.test
+      dockerfile: Dockerfile.web-app
     ports:
       - "127.0.0.1:3000:3000"
 
