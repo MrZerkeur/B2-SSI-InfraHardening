@@ -67,7 +67,7 @@ export const login = async (prevState: { error: undefined | string }, formData: 
     session.isLoggedIn = true;
 
     await session.save();
-    redirect('/');
+    redirect('/profile');
 }
 
 export const logout = async () => {
