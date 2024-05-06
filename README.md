@@ -2,6 +2,3 @@
 
 docker compose up -d --build
 
-NODE_ENV=production
-npm run build
-npm run start

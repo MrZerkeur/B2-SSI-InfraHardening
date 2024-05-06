@@ -59,7 +59,7 @@ export default async function Admin() {
                     {contactForm.tel}
                   </td>
                   <td className="px-6 py-4">
-                    {contactForm.filePath}
+                    <Image src={contactForm.filePath} alt={`image at index ${index}`} width="100" height="100" />
                   </td>
                 </tr>
               ))}

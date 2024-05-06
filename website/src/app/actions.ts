@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import mariadb from 'mariadb';
 import bcrypt from 'bcrypt';
 import path from "path";
+import { v4 as uuidv4 } from 'uuid';
 import { redirect } from "next/navigation";
 import { writeFile } from "fs/promises";
 
@@ -192,25 +193,29 @@ async function getUserInfo(username: string): Promise<[string, boolean]> {
 // * Contact form
 
 export const contact = async(prevState: { error: undefined | string }, formData: FormData) => {
-  const firstName = formData.get('firstName') as string;
-  const lastName = formData.get('lastName') as string;
-  const email = formData.get('email') as string;
-  const tel = formData.get('tel') as string | null;
-  const message = formData.get('message') as string;
+    const firstName = formData.get('firstName') as string;
+    const lastName = formData.get('lastName') as string;
+    const email = formData.get('email') as string;
+    const tel = formData.get('tel') as string | null;
+    const message = formData.get('message') as string;
 
-  const [isValid, error] = validateContactFormData(firstName, lastName, email, message, tel)
-  
-  if (!isValid) {
-      return error;
-  }
+    const [isValid, error] = validateContactFormData(firstName, lastName, email, message, tel)
+    
+    if (!isValid) {
+        return error;
+    }
 
-  const file = formData.get('file') as File;
-  let filePath = null
-  if (file.name != 'undefined' && file.size != 0 && file.type != 'application/octet-stream') {
-    filePath = await uploadFile(file);
-  }
-  await addNewContactForm(firstName, lastName, email, message, tel, filePath)
-  redirect('/profile')
+    const file = formData.get('file') as File;
+    let filePath = null
+    if (file.name != 'undefined' && file.size != 0 && file.type != 'application/octet-stream') {
+        if (file.type.startsWith('image/') && file.size <= 3000000) {
+            filePath = await uploadFile(file);
+        } else {
+            return { error: "Le fichier doit être une image valide et ne doit pas dépasser une taille de 3 MB !"}
+        }
+    }
+    await addNewContactForm(firstName, lastName, email, message, tel, filePath)
+    redirect('/')
 }
 
 async function addNewContactForm(firstName : string, lastName : string, email : string, message : string, tel : string | null, file_path: string | null) {
@@ -225,71 +230,78 @@ async function addNewContactForm(firstName : string, lastName : string, email : 
 }
 
 async function uploadFile(file: File): Promise<string> {
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const filename =  file.name.replaceAll(" ", "_");
-  const filePath = path.join(process.cwd(), "public/assets/" + filename);
-  await writeFile(
-    path.join(filePath),
-    buffer
-  );
-  return filePath;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const fileExtension = file.name.split('.').pop(); // Get the file extension
+    const newFilename = `${uuidv4()}.${fileExtension}`;
+    const filePath = path.join(process.cwd(), "public/assets/" + newFilename);
+    await writeFile(
+        path.join(filePath),
+        buffer
+    );
+    return `/assets/${newFilename}`;
 }
 
 export interface ContactForm {
-  firstName: string;
-  lastName: string;
-  email: string;
-  message: string;
-  tel: string;
-  filePath: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    message: string;
+    tel: string;
+    filePath: string;
 }
 
 export async function getAllContactForms(): Promise<ContactForm[]> {
-  const contactForms: ContactForm[] = [];
-  let conn;
-  try {    
-    conn = await pool.getConnection();
-    const query =  await conn.prepare("SELECT first_name, last_name, email, message, tel, file_path FROM contact_forms");
-    const rows = await query.execute();
-    for (const row of rows) {
-      const contactForm: ContactForm = {
-        firstName: row["first_name"],
-        lastName: row["last_name"],
-        email: row["email"],
-        message: row["message"],
-        tel: row["tel"],
-        filePath: row["file_path"],
-      };
-      contactForms.push(contactForm)
+    const contactForms: ContactForm[] = [];
+    let conn;
+    try {    
+        conn = await pool.getConnection();
+        const query =  await conn.prepare("SELECT first_name, last_name, email, message, tel, file_path FROM contact_forms");
+        const rows = await query.execute();
+        for (const row of rows) {
+        const contactForm: ContactForm = {
+            firstName: row["first_name"],
+            lastName: row["last_name"],
+            email: row["email"],
+            message: row["message"],
+            tel: row["tel"],
+            filePath: row["file_path"],
+        };
+        contactForms.push(contactForm)
+        }
+    } finally {
+        if (conn) conn.release(); // release to pool
+        return contactForms;
     }
-  } finally {
-    if (conn) conn.release(); // release to pool
-    return contactForms;
-  }
 }
 
 function validateContactFormData(firstName : string, lastName : string, email : string, message : string, tel : string | null): [boolean, { error: undefined | string }] {
-  const alphaRegex = /^[A-Za-z]{1,100}$/;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const phoneRegex = /^[0-9]{10}$/;
+    const alphaRegex = /^[a-zA-Z]+([ \-']{0,1}[a-zA-Z]+){0,2}$/;
+    const emailRegex = /^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,5})$/;
+    const phoneRegex = /^\b\d{3}[-.]?\d{3}[-.]?\d{4}\b$/;
 
-  if (!alphaRegex.test(firstName)) {
-    return [false, { error: "Le prénom doit contenir moins de 100 caractères et seulement des lettres majusctules ou miniscules" }]
-  }
-  if (!alphaRegex.test(lastName)) {
-    return [false, { error: "Le nom doit contenir moins de 100 caractères et seulement des lettres majusctules ou miniscules" }]
-  }
-  if (!emailRegex.test(email)) {
-    return [false, { error: "Veuillez entrer une adresse mail valide" }]
-  }
-  if (tel !== null && !phoneRegex.test(tel)) {
-    return [false, { error: "Le numéro de téléphone doit contenir 10 chiffres" }]
-  }
-  if (!(/^[A-Za-z0-9',;.:?!]{1,300}$/).test(message)) {
-    return [false, { error: "Le message doit contenir au maximum 300 caractères et seuls les caratères alphanumériques et ',;.:?! sont acceptés" }]
-  }
+    const fullName = firstName + ' ' + lastName;
 
-  return (
-    [true, { error: undefined }]
-  );
+    // if (!alphaRegex.test(firstName)) {
+    //   return [false, { error: "Le prénom doit contenir moins de 100 caractères et seulement des lettres majusctules ou miniscules" }]
+    // }
+    // if (!alphaRegex.test(lastName)) {
+    //   return [false, { error: "Le nom doit contenir moins de 100 caractères et seulement des lettres majusctules ou miniscules" }]
+    // }
+
+    if (!alphaRegex.test(fullName)) {
+        return [false, { error: "Veuillez entrer un prénom et un nom valide" }]
+    }
+    if (!emailRegex.test(email)) {
+        return [false, { error: "Veuillez entrer une adresse mail valide" }]
+    }
+    if (tel !== null && !phoneRegex.test(tel) && tel !== '') {
+        return [false, { error: "Le numéro de téléphone doit avoir l'une de ces trois formes : 123-123-1234, 123.123.1234, ou 1231231234" }]
+    }
+    if (!(/^[a-zA-Z0-9\s\-.,!?:;"'(){}\[\]<>]{1,300}$/).test(message)) {
+        return [false, { error: "Le message doit contenir au maximum 300 caractères et seuls les caratères alphanumériques, les espaces et -.,!?:;\"'(){}[]<> sont acceptés" }]
+    }
+
+    return (
+        [true, { error: undefined }]
+    );
 }
