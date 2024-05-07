@@ -279,7 +279,7 @@ function validateContactFormData(firstName : string, lastName : string, email : 
     const emailRegex = /^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,5})$/;
     const phoneRegex = /^\b\d{3}[-.]?\d{3}[-.]?\d{4}\b$/;
 
-    const fullName = firstName + ' ' + lastName;
+    const fullName = firstName + lastName;
 
     // if (!alphaRegex.test(firstName)) {
     //   return [false, { error: "Le prénom doit contenir moins de 100 caractères et seulement des lettres majusctules ou miniscules" }]
