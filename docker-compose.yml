@@ -5,4 +5,7 @@ services:
     build: 
       context: postfix
       dockerfile: postfix.Dockerfile
-    command: sleep infinity
+    command: bash -c "
+        service postfix restart
+        && sleep infinity
+      "
