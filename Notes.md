@@ -371,3 +371,10 @@ https://wazuh.com/blog/monitoring-root-actions-on-linux-using-auditd-and-wazuh/
 
 
 
+# ALERTES PAR MAIL :
+
+Suivre cette doc : https://documentation.wazuh.com/current/user-manual/manager/manual-email-report/smtp-authentication.html
+
+Certains fichiers n'existent pas, donc il faut les créer.
+
+Puis suivre cette doc : https://wazuh.com/blog/how-to-send-email-notifications-with-wazuh/

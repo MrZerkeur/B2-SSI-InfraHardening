@@ -1,0 +1,8 @@
+version: '3'
+
+services:
+  postfix:
+    build: 
+      context: postfix
+      dockerfile: postfix.Dockerfile
+    command: sleep infinity
