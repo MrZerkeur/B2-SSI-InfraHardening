@@ -378,3 +378,5 @@ Suivre cette doc : https://documentation.wazuh.com/current/user-manual/manager/m
 Certains fichiers n'existent pas, donc il faut les créer.
 
 Puis suivre cette doc : https://wazuh.com/blog/how-to-send-email-notifications-with-wazuh/
+
+En fait non, ça marche pas parce que wazuh server est déployé avec docker, alors il faut faire un autre conteneur qui fait tourner postfix. Tous les fichiers de conf sont dans le dossier postfix
