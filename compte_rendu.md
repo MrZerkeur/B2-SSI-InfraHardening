@@ -148,9 +148,242 @@ sudo systemctl restart suricata
 ⚠️ Ne pas oublier de restart Wazuh
 
 # Zoom sur le hardening et les configurations
-- nginx
-- ssh
+
+Dans cette section, je détaillerais les options/paramètres importants d'un point de vue sécurité. Les fichiers de configuration complets se trouvent [ICI](#annexes)
+
+## Configuration de NGINX
+
+Le fichier de configuration de NGINX complet se trouve [ICI](#nginx-conf)
+
+Cette directive indique à NGINX d'écouter les connexions entrantes sur le port 443 et d'utiliser SSL/TLS pour chiffrer la connexion :
+```
+listen 443 ssl;
+```
+
+Cette directive spécifie les protocoles SSL/TLS autorisés pour les connexions sécurisées, limitant l'utilisation aux versions TLS 1.2 et TLS 1.3 :
+```
+ssl_protocols TLSv1.2 TLSv1.3;
+```
+
+Cette directive désactive l'affichage de la version de NGINX dans les headers HTTP, réduisant ainsi la surface d'attaque pour les attaquants en masquant la version de NGINX utilisée :
+```
+server_tokens off;
+```
+
+Cette directive retire le header HTTP ```X-Powered-By``` qui divulgue des informations sur les technologies utilisées pour développer le site :
+```
+proxy_hide_header X-Powered-By;
+```
+
+Cette directive rajoute le header HTTP ```X-Frame-Options``` avec la valeur ```SAMEORIGIN```, ce qui permet de limiter l'inclusion de la page dans un iframe à des pages provenant du même domaine, réduisant ainsi les risques de clickjacking :
+```
+add_header X-Frame-Options SAMEORIGIN;
+```
+
+Cette directive rajoute le header HTTP ```Strict-Transport-Security``` qui indique aux navigateurs de n'autoriser que les connexions HTTPS pour le domaine spécifié et ses sous-domaines, et d'enregistrer cette politique dans la liste de préchargement HSTS :
+```
+add_header Strict-Transport-Security "max-age=31536000; includeSubdomains; preload";
+```
+
+Cette directive limite les méthodes HTTP autorisées à ```GET```, ```HEAD``` et ```POST```, toutes les autres méthodes étant interdites cela réduit la surface d'attaque :
+```
+limit_except GET HEAD POST { deny all; }
+```
+
+## Configuration de SSH
+
+Le fichier de configuration de SSH complet se trouve [ICI](#ssh-conf)
+
+Cette directive restreint l'accès à seulement certaines utilisateurs, ici seulement à l'utilisateur axel :
+```
+AllowUsers axel
+```
+
+Cette directive désactive l'authentification par mot de passe, ce qui signifie que les utilisateurs ne peuvent pas se connecter que par des clés :
+```
+PasswordAuthentication no
+```
+
+Cette directive interdit la connexion directe en tant que root :
+```
+PermitRootLogin no
+```
+
+Cette directive interdit l'authentification SSH avec un mot de passe vide :
+```
+PermitEmptyPasswords no
+```
+
+Cette directive définit la durée maximale en secondes pendant laquelle un utilisateur peut se connecter après avoir établi une connexion SSH. Après ce délai, la connexion sera fermée :
+```
+LoginGraceTime 60
+```
+
+Cette directive définit le nombre maximal de tentatives d'authentification autorisées avant que l'utilisateur ne soit déconnecté :
+```
+MaxAuthTries 4
+```
+
+Cette directive limite le nombre maximum de sessions SSH simultanées pour un utilisateur donné :
+```
+MaxSessions 10
+```
+
+Ces directives spécifient les délais et le nombre de demande de maintien de connexion à envoyer au client SSH. Cela permet de maintenir les sessions SSH actives et de déconnecter les clients inactifs après une certaine période :
+```
+ClientAliveInterval 15
+ClientAliveCountMax 3
+```
+
+Cette directive active l'utilisation du module d'authentification PAM :
+```
+UsePAM yes
+```
+
+Cette directive désactive la possibilité pour les utilisateurs de définir leurs propres variables d'environnement lors de la connexion SSH, réduisant ainsi les risques liés à l'exécution de scripts malveillants:
+```
+PermitUserEnvironment no
+```
+
+Cette directive désactive l'authentification basée sur l'hôte qui utilise les adresses IP des clients pour vérifier leur identité. Cependant, cette méthode est considérée comme peu sécurisée car elle ne fournit pas une authentification forte et peut être facilement contournée par des attaquants :
+```
+HostbasedAuthentication no
+```
+
+Cette directive indique à SSH d'ignorer les fichiers ```.rhosts``` et ```.shosts``` pour l'authentification des utilisateurs :
+```
+IgnoreRhosts yes
+```
+
+Ces directives désactivent le transfert X11 et le transfert TCP via SSH, respectivement, ce qui réduit les risques potentiels :
+```
+X11Forwarding no
+AllowTcpForwarding no
+```
+
+Enfin, ces directives paramètrent des algorithmes de chiffrement forts :
+```
+Ciphers aes128-ctr,aes192-ctr,aes256-ctr
+HostKeyAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-rsa,ssh-dss
+KexAlgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha256
+```
+
+## Sécurité de l'application web
+
+### Système d'authenfication et d'autorisation
+
+Sessions basées sur des cookies : 
+
+[Iron-Session](https://github.com/vvo/iron-session) : une librairie de session sécurisée, stateless et basée sur des cookies pour JavaScript
+
+Cookie : 
+```ts
+{
+    password: process.env.SECRET_KEY!,
+    cookieName: "user-session",
+    cookieOptions: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000,
+    }
+}
+```
+
+| Attribut | Valeur | Explication |
+| -------- | ------ | ----------- |
+| password | process.env.SECRET_KEY! | Définit une clé secrète stockée dans un fichier local .env  et utilisée pour signer les cookies, assurant leur intégrité et empêchant leur altération |
+| cookieName | "user-session" | Définit le nom du cookie de la session |
+| httpOnly | true | Indique aux navigateurs Web de ne pas autoriser les scripts (par ex. JavaScript ou VBscript) à accéder aux cookies via l’objet document.cookie du DOM. Aide à prévenir les attaques de type XSS (Cross Site Scripting) |
+| secure | process.env.NODE_ENV === "production" (équivaut à true) | Indique aux navigateurs Web de n’envoyer le cookie que via une connexion HTTPS (SSL/TLS) chiffrée. Ici la variable d'environnement NODE_ENV est toujours "production" activant l'attribut secure. Il protège uniquement la confidentialité d’un cookie contre les attaquants MitM |
+| sameSite | 'strict' | Définit un attribut du cookie empêchant les navigateurs d’envoyer un cookie signalé par SameSite avec des requêtes intersites. L’objectif principal est d’atténuer le risque de fuite d’informations d’origine croisée et de fournir une certaine protection contre les attaques de falsification de demandes intersites. Ici `strict`, signifie que le navigateur n’envoie le cookie que pour les requêtes du même site, c’est-à-dire les requêtes provenant du même site qui a défini le cookie. Si une requête provient d’une URL différente de la précédente, aucun cookie avec l’attribut `SameSite=Strict` n’est envoyé. |
+| maxAge | 24 * 60 * 60 | Spécifie la durée de validité du cookie en millisecondes. Ici, elle est égale à 24 heures |  
+
+L’attribut `Domain` définit l’hôte auquel le cookie sera envoyé. Il n'est pas spécifié ici car il est défini par défaut sur l’hôte de l’emplacement actuel du document, à l’exclusion des sous-domaines.
+
+Sources : 
+- https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#
+- https://0xn3va.gitbook.io/cheat-sheets/web-application/cookie-security
+
+
+### Vérification et validation des entrées utilisateurs
+
+`Règle n°1 : Ne pas faire confiance aux entrées utilisateurs !`   
+
+En effet, les risques liés aux attaques de type injections SQL et XSS sont légion :  
+
+- Injection de code malveillant
+- Prise de contrôle et/ou corruption d'une infrastructure
+- Vol de données sensibles
+- etc...
+
+Pour prémunir de ces failles de sécurité, il est nécessaire d'appliquer des mesures de sécurité fiables et concrètes.  
+
+**Important : Toutes ces mesures sont réalisées côté serveur car un utilisateur malveillant peut contourner les vérifications côté client** 
+
+#### Nettoyage des entrées utilisateurs
+
+Utilisation d'expressions régulières (ou Regex) :
+
+Une expression régulière décrit un motif, un pattern que nous souhaitons rechercher et localiser dans du texte.  
+Ces dernières vont donc ici nous servir pour valider et filtrer les entrées utilisateur afin de détecter et bloquer les attaques par injection en limitant le nombre de caractères utilisables en fonction du champs.  
+
+- Pseudonyme de l'utilisateur : `/^[A-Za-z][A-Za-z0-9]{0,23}$/`
+  - Entre 1 et 24 caractères, composé de lettres majuscules et/ou minuscules et de chiffres (excepté pour le premier caractère)
+- Prénom et nom : `/^[a-zA-Z]+([ \-']{0,1}[a-zA-Z]+){0,2}$/`
+  - Valide des noms (prénom et noms si plusieurs) simples ou composés
+- Adresse Mail : `/^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,5})$/`
+  - Exemples de correspondance avec cette regex :
+    - john.doe@example.com
+    - user123@mail-server.co.uk
+    - jane_doe123@sub.domain.com
+  - Exemples de non-correspondance :
+    - not_an_email (pas de @)
+    - john@doe (manque l'extension de domaine)
+    - invalid@domain.invalid-extension (l'extension de domaine est trop longue)
+- Numéro de téléphone : `/^\b\d{3}[-.]?\d{3}[-.]?\d{4}\b$/`  
+  - Valide des numéros de téléphones selon l'une de ces trois formes :
+    - 0123456789
+    - 012-345-6789
+    - 012.345.6789
+
+Sources :  
+- https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html
+
+#### Téléchargement de fichiers  
+
+Validation du fichier avant téléchargement  
+
+- Vérification de l'extension du fichier
+  - N'accepte que des images
+- Limitation de la taille du fichier
+  - N'accepte que les fichiers aillant une taille inférieure à 3 MB
+
+Renommage du fichier avant téléchargement  
+
+- Génération d'un identifiant unique UUIDv4
+  - ma_photo.jpg -> a600bc3f-3ff2-452c-a0fa-3cd4945d8c72.jpg
+
+#### Requêtes à la base de données
+
+Utilisation de requêtes préparées (avec requêtes paramétrées)
+
+```ts
+# Exemple de code
+const query = await conn.prepare("INSERT INTO users (username, hashed_password, salt, is_admin) VALUES (?, ?, ?, FALSE)");
+await query.execute([username, hashedPassword, salt]);
+```
+
+Dans ce cas, si l'utilisateur devait entrer comme nom d'utilisateur `toto' or 1=1;--`, la requête paramétrée interprètera un nom d’utilisateur qui correspond littéralement à la chaîne de caractères entière `toto' or 1=1;--`. Ainsi, la base de données serait protégée contre les injections de code SQL malveillant.
+
+Sources :
+- https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+
 - docker
+- suricata ?
+- wazuh règles custom, active response + mail (postfix)
+- CIS ?
+- Site internet (partie Hugo)
 
 # Problèmes rencontrés
 
@@ -166,7 +399,7 @@ Il est possible d'avoir un démon à la fois en "rootless" et un autre qui fonct
 
 Initialement, le système d'exploitation du serveur qui avait été choisi était Debian 12. Mais Debian 12 (contrairement à Debian 11) n'utilise plus rsyslog, mais plutôt journalctl. Ce qui n'est pas compatible avec Wazuh, ou en tout cas pas sans configuration supplémentaire que je n'ai pas réussi à faire.
 
-Nous sommes donc passé sur Debian 11. Mais les dépendances étant trop vieille et des problèmes avec Suricata (aucune règle ne fonctionnait, et une erreur me disant que la longueu des paquets est invalide tournait en boucle) m'ont convaincu de changer d'OS.
+Nous sommes donc passé sur Debian 11. Mais les dépendances étant trop vieille et des problèmes avec Suricata (aucune règle ne fonctionnait, et une erreur me disant que la longueur des paquets est invalide tournait en boucle) m'ont convaincu de changer d'OS.
 
 Nous somme enfin passé sur Ubuntu 22.04 et tout fonctionne maintenant.
 
@@ -179,12 +412,65 @@ Pour accroître l'efficacité de la surveillance et de la détection des menaces
 
 Il pourrait être intéressant de mettre le dashboard de Wazuh derrière le reverse proxy de NGINX pour bénéficier des différentes fonctionnalités de NGINX mais aussi facilité la gestion des sites accessibles depuis l'hôte.
 
-- Docker rootles :
+- Docker rootless :
 
 Pour empêcher qu'un assaillant, ayant réussi à pénétrer dans le conteneur Docker et à en échapper, puisse obtenir les privilèges root, il serait judicieux de basculer le démon Docker en mode "rootless". Cependant, étant donné que Wazuh ne prend pas en charge cette configuration, une solution envisageable serait de faire fonctionner un démon en mode "rootless" pour le conteneur du site, tandis qu'un démon classique serait maintenu pour Wazuh.
 
 # Conclusion
 
 # Annexes
+
+## NGINX conf
+```
+server {
+    listen 443 ssl;
+
+    ssl_certificate /home/axel/server.crt;
+    ssl_certificate_key /home/axel/server.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    server_tokens off;
+    proxy_hide_header X-Powered-By;
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header Strict-Transport-Security "max-age=31536000; includeSubdomains; preload";
+
+    location / {
+        proxy_pass http://localhost:3000;
+        limit_except GET HEAD POST { deny all; }
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+## SSH conf
+```
+Include /etc/ssh/sshd_config.d/*.conf
+AllowUsers axel
+PasswordAuthentication no
+LogLevel VERBOSE
+LoginGraceTime 60
+PermitRootLogin no
+MaxAuthTries 4
+MaxSessions 10
+AuthorizedKeysFile      .ssh/authorized_keys
+HostbasedAuthentication no
+IgnoreRhosts yes
+PermitEmptyPasswords no
+UsePAM yes
+PermitUserEnvironment no
+ClientAliveInterval 15
+ClientAliveCountMax 3
+MaxStartups 10:30:60
+Banner /etc/issue.net
+Subsystem       sftp    /usr/libexec/openssh/sftp-server
+X11Forwarding no
+AllowTcpForwarding no
+Ciphers aes128-ctr,aes192-ctr,aes256-ctr
+HostKeyAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-rsa,ssh-dss
+KexAlgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha256
+```
 
 Sources et fichiers de conf

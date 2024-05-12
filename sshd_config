@@ -6,7 +6,7 @@ LoginGraceTime 60
 PermitRootLogin no
 MaxAuthTries 4
 MaxSessions 10
-AuthorizedKeysFile	.ssh/authorized_keys
+AuthorizedKeysFile      .ssh/authorized_keys
 HostbasedAuthentication no
 IgnoreRhosts yes
 PermitEmptyPasswords no
@@ -16,16 +16,9 @@ ClientAliveInterval 15
 ClientAliveCountMax 3
 MaxStartups 10:30:60
 Banner /etc/issue.net
-Subsystem	sftp	/usr/libexec/openssh/sftp-server
+Subsystem       sftp    /usr/libexec/openssh/sftp-server
 X11Forwarding no
 AllowTcpForwarding no
 Ciphers aes128-ctr,aes192-ctr,aes256-ctr
 HostKeyAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-rsa,ssh-dss
 KexAlgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha256
-
-
-
-#KbdInteractiveAuthentication no
-#PrintMotd no
-#AcceptEnv LANG LC_*
-#Subsystem       sftp    /usr/lib/openssh/sftp-server
