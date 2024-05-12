@@ -30,7 +30,7 @@ Ce schéma représente l'infrastructure de notre projet, toutes les connexions r
 
 Les utilisateurs normaux accèdent au site internet à travers le port 443 (HTTPS), assurant ainsi une communication chiffrée. Le trafic utilisateur est d'abord dirigé vers le pare-feu avant d'être transmis à NGINX. NGINX agit comme un reverse proxy, redirigeant ensuite les requêtes vers le conteneur Docker hébergeant le site web. Ce conteneur communique avec sa base de données au besoin et renvoie les réponses à NGINX, qui agit en tant qu'intermédiaire entre le programme et l'utilisateur final.
 
-Les administrateurs accèdent au dashboard de Wazuh en se connectant directement au port 5601. Wazuh collecte des logs à partir de diverses sources, les analyse pour détecter d'éventuelles violations de sécurité et génère des alertes qui sont visualisées sur le dashboard de Wazuh. En cas d'alerte atteignant un niveau défini dans la configuration (dans notre cas, niveau 12), Wazuh déclenche l'envoi d'un e-mail d'alerte via Postfix. Wazuh supporte nativement l'envoie d'e-mail mais ne supporte aucun serveur smtp, j'ai donc ajouté postfix dans le docker compose de Wazuh pour permettre un envoie simple des e-mails tout en conteneurisant le serveur smtp.
+Les administrateurs accèdent au dashboard de Wazuh en se connectant directement au port 5601. Wazuh collecte des logs à partir de diverses sources, les analyse pour détecter d'éventuelles violations de sécurité et génère des alertes qui sont visualisées sur le dashboard de Wazuh. En cas d'alerte atteignant un niveau défini dans la configuration (dans notre cas, niveau 12), Wazuh déclenche l'envoi d'un e-mail d'alerte via Postfix. Wazuh supporte nativement l'envoi d'e-mail mais ne supporte aucun serveur smtp, j'ai donc ajouté postfix dans le docker compose de Wazuh pour permettre un envoie simple des e-mails tout en conteneurisant le serveur smtp.
 
 Wazuh dispose également d'une fonctionnalité d'active-response, permettant la mise en œuvre de mesures correctives automatisées. Par exemple, en cas de détection d'une attaque de brute-force, Wazuh peut déclencher un bannissement temporaire pour l'adresse IP source.
 
@@ -80,7 +80,7 @@ Il ne reste plus qu'à aller aller sur l'IP de votre site pour accéder au dashb
 
 ⚠️ N°1 : Il ne faut pas oublier de configurer le pare-feu en conséquence
 
-⚠️ N°2 : Par défaut le dashboard tourne sur le port 443, si utilisez ou comptez utiliser ce port pour un autre service (NGINX par exemple pour un site internet), il faut penser à le modifier dans le ```docker-compose.yml```
+⚠️ N°2 : Par défaut le dashboard tourne sur le port 443, si vous utilisez ou comptez utiliser ce port pour un autre service (NGINX par exemple pour un site internet), il faut penser à le modifier dans le ```docker-compose.yml```
 
 ## Enroller un serveur comme agent
 
@@ -132,7 +132,7 @@ rule-files:
 ### Intégration
 
 - Créer un groupe nommé "Suricata" via le dashboard : ```Management``` => ```Groups``` => ```Add new group```
-- Agent l'agent souhaité dans ce groupe : ```Management``` => ```Groups``` => Cliquer sur le groupe => ```Manage agents```
+- Ajouter l'agent souhaité dans ce groupe : ```Management``` => ```Groups``` => Cliquer sur le groupe => ```Manage agents```
 - Activer la surveillance du fichier de log de Suricata via le dashboard ou en modifier ```/var/ossec/etc/shared/Suricata/agent.conf``` depuis l'intérieur du conteneur de Wazuh manager :
 
 ```
@@ -206,7 +206,7 @@ limit_except GET HEAD POST { deny all; }
 
 Le fichier de configuration de SSH complet se trouve [ICI](#ssh-conf)
 
-Cette directive restreint l'accès à seulement certaines utilisateurs, ici seulement à l'utilisateur axel :
+Cette directive restreint l'accès à seulement certains utilisateurs, ici seulement à l'utilisateur axel :
 ```
 AllowUsers axel
 ```
@@ -406,7 +406,7 @@ Pour ce qui est de docker, notre principale préoccupation était de réduire un
 
 ### Alertes par e-mail
 
-Avant de toucher à la configuration, il faut ajouter un nouveau conteneur postfix dans le docker-compose de Wazuh pour qu'ils soient puissent communiqué. Etant donné que je n'ai pas trouvé de documentation officielle qui correspond à la version conteneurisé de Wazuh server, j'ai construis mon propre conteneur postfix qui est relié à un compte gmail crée pour l'occasion. Vous trouverez [ICI](#postfix-docker-compose) le docker-compose qu'il faut ajouter à celui de Wazuh et [ICI](#postfixdockerfile) le Dockerfile qui y est lié.
+Avant de toucher à la configuration, il faut ajouter un nouveau conteneur postfix dans le docker-compose de Wazuh pour qu'ils puissent communiqué. Etant donné que je n'ai pas trouvé de documentation officielle qui correspond à la version conteneurisé de Wazuh server, j'ai construis mon propre conteneur postfix qui est relié à un compte gmail créé pour l'occasion. Vous trouverez [ICI](#postfix-docker-compose) le docker-compose qu'il faut ajouter à celui de Wazuh et [ICI](#postfixdockerfile) le Dockerfile qui y est lié.
 
 
 
@@ -462,7 +462,7 @@ Règle n° 100200 : Potential SSH Scan has been detected => Il s'agit d'une règ
 
 ### Règles custom
 
-Pour créer des règles custom, il faut modifier le fichier ```local_rules.xml``` via le dashboard ou depuis le conteneur. Pour ce projet j'ai modifié 4 règles déjà existantes pour changer le niveau d'aller de niveau 3 au niveau 12 : les règles concernées sont la déconnexion, suppression et arrêt d'un agent, ainsi que l'ouverture d'une session avec PAM :
+Pour créer des règles custom, il faut modifier le fichier ```local_rules.xml``` via le dashboard ou depuis le conteneur. Pour ce projet j'ai modifié 4 règles déjà existantes pour changer le niveau d'alerte de niveau 3 au niveau 12 : les règles concernées sont la déconnexion, suppression et arrêt d'un agent, ainsi que l'ouverture d'une session avec PAM :
 ```
 <group name="ossec,">
   <rule id="504" level="12" overwrite="yes">
