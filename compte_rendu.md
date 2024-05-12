@@ -20,6 +20,8 @@ Au-delà de la simple fonctionnalité du site, une attention particulière a ét
 - 4Go RAM
 - 4 cores CPU
 
+
+
 # Schema de l'infrastructure
 
 ![Schema](schema.png)
@@ -31,6 +33,8 @@ Les utilisateurs normaux accèdent au site internet à travers le port 443 (HTTP
 Les administrateurs accèdent au dashboard de Wazuh en se connectant directement au port 5601. Wazuh collecte des logs à partir de diverses sources, les analyse pour détecter d'éventuelles violations de sécurité et génère des alertes qui sont visualisées sur le dashboard de Wazuh. En cas d'alerte atteignant un niveau défini dans la configuration (dans notre cas, niveau 12), Wazuh déclenche l'envoi d'un e-mail d'alerte via Postfix. Wazuh supporte nativement l'envoie d'e-mail mais ne supporte aucun serveur smtp, j'ai donc ajouté postfix dans le docker compose de Wazuh pour permettre un envoie simple des e-mails tout en conteneurisant le serveur smtp.
 
 Wazuh dispose également d'une fonctionnalité d'active-response, permettant la mise en œuvre de mesures correctives automatisées. Par exemple, en cas de détection d'une attaque de brute-force, Wazuh peut déclencher un bannissement temporaire pour l'adresse IP source.
+
+
 
 # Description, installation, mise en place et documentation fonctionnelle
 
@@ -54,6 +58,8 @@ Password : SecretPassword
 Dans le cadre d'un déploiement sur un serveur connecté à Internet, il faut évidemment modifier tous les mots de passe par défaut, c'est donc ce que nous allons faire.
 
 Pour générer les hashs des mots de passe, Wazuh nous fourni un conteneur. Il suffit de lancer la commande ci-dessous, il sera demandé un mot de passe à entrer puis on recevra son hash
+
+
 ```
 docker run --rm -ti wazuh/wazuh-indexer:4.7.3 bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh
 ```
@@ -122,11 +128,13 @@ rule-files:
   - "*.rules"
 ```
 
+
 ### Intégration
 
 - Créer un groupe nommé "Suricata" via le dashboard : ```Management``` => ```Groups``` => ```Add new group```
 - Agent l'agent souhaité dans ce groupe : ```Management``` => ```Groups``` => Cliquer sur le groupe => ```Manage agents```
 - Activer la surveillance du fichier de log de Suricata via le dashboard ou en modifier ```/var/ossec/etc/shared/Suricata/agent.conf``` depuis l'intérieur du conteneur de Wazuh manager :
+
 ```
 <agent_config>
   <localfile>
@@ -146,6 +154,8 @@ sudo systemctl restart suricata
 ```
 
 ⚠️ Ne pas oublier de restart Wazuh
+
+
 
 # Zoom sur le hardening et les configurations
 
@@ -179,6 +189,8 @@ Cette directive rajoute le header HTTP ```X-Frame-Options``` avec la valeur ```S
 ```
 add_header X-Frame-Options SAMEORIGIN;
 ```
+
+
 
 Cette directive rajoute le header HTTP ```Strict-Transport-Security``` qui indique aux navigateurs de n'autoriser que les connexions HTTPS pour le domaine spécifié et ses sous-domaines, et d'enregistrer cette politique dans la liste de préchargement HSTS :
 ```
@@ -290,6 +302,8 @@ Cookie :
 }
 ```
 
+
+
 | Attribut | Valeur | Explication |
 | -------- | ------ | ----------- |
 | password | process.env.SECRET_KEY! | Définit une clé secrète stockée dans un fichier local .env  et utilisée pour signer les cookies, assurant leur intégrité et empêchant leur altération |
@@ -309,6 +323,8 @@ Sources :
 ### Vérification et validation des entrées utilisateurs
 
 `Règle n°1 : Ne pas faire confiance aux entrées utilisateurs !`   
+
+
 
 En effet, les risques liés aux attaques de type injections SQL et XSS sont légion :  
 
@@ -350,6 +366,8 @@ Ces dernières vont donc ici nous servir pour valider et filtrer les entrées ut
 Sources :  
 - https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html
 
+
+
 #### Téléchargement de fichiers  
 
 Validation du fichier avant téléchargement  
@@ -379,15 +397,222 @@ Dans ce cas, si l'utilisateur devait entrer comme nom d'utilisateur `toto' or 1=
 Sources :
 - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
 
-- docker
-- suricata ?
-- wazuh règles custom, active response + mail (postfix)
-- CIS ?
-- Site internet (partie Hugo)
+## Docker
+
+Pour ce qui est de docker, notre principale préoccupation était de réduire un maximum les risques qu'un attaquant qui arrive à s'introduire dans le conteneur ne s'en échappe, c'est pourquoi nous avons prit soin de faire tourner la web app avec un utilisateur sans aucun droit root et de désactiver le compte root.
+
+
+## Wazuh
+
+### Alertes par e-mail
+
+Avant de toucher à la configuration, il faut ajouter un nouveau conteneur postfix dans le docker-compose de Wazuh pour qu'ils soient puissent communiqué. Etant donné que je n'ai pas trouvé de documentation officielle qui correspond à la version conteneurisé de Wazuh server, j'ai construis mon propre conteneur postfix qui est relié à un compte gmail crée pour l'occasion. Vous trouverez [ICI](#postfix-docker-compose) le docker-compose qu'il faut ajouter à celui de Wazuh et [ICI](#postfixdockerfile) le Dockerfile qui y est lié.
+
+
+
+Je précise qu'il faudra ajouter à côté du Dockerfile un fichier nommé ```main.cf``` avec ça dedans :
+```
+relayhost = [smtp.gmail.com]:587
+smtp_sasl_auth_enable = yes
+smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+smtp_sasl_security_options = noanonymous
+smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+smtp_use_tls = yes
+smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, defer_unauth_destination
+```
+
+Ainsi qu'un fichier nommé ```sasl_passwd``` avec ce format :
+```
+[smtp.gmail.com]:587 email_go_here@gmail.com:password_go_here
+```
+
+⚠️ Le mot de passe à utiliser doit être un [App password](https://security.google.com/settings/security/apppasswords) qui ne peut être crée que lorsque l'authentification à 2 facteurs est activée.
+
+Pour configurer tout ça dans la configuration de Wazuh, il faut modifier le fichier ```wazuh-docker/single-node/config/wazuh_cluster/wazuh_manager.conf```, ce fichier restera utilisé comme configuration de base à chaque lancement/re-lancement de Wazuh server, ce qui évite de voir notre configuration se faire overwrite. 
+
+Dans la zone ```<global>```, passer ```<email_notification>``` en ```yes```, mettre dans ```<smtp_server>``` le nom approprié (dans mon cas c'est ```postfix```), ajouter respectivement dans ```<email_from>``` et ```<email_to>``` les adresses e-mail à utiliser, enfin configurer ```<email_maxperhour>```, dans mon cas j'ai mis ```100```.
+
+Si on souhaite modifier le niveau d'alerte nécéssaire pour l'envoi d'un mail, on peut modifier ```<email_alert_level>``` dans la zone ```<alerts>```
+
+### Active-response
+
+Toujours dans le fichier ```wazuh-docker/single-node/config/wazuh_cluster/wazuh_manager.conf```, on peut modifier la partie ```<active-response>``` pour engendrer une certaine action lorsqu'une règle est déclenchée. Pour notre cas, j'ai utilisé cette configuration pour déclencher le banissement pendant 3min des IP qui déclenchent l'un de ces règles :
+```
+<active-response>
+  <command>firewall-drop</command>
+  <location>local</location>
+  <rules_id>5710, 5711, 5763, 5719, 5720, 100200</rules_id>
+  <timeout>180</timeout>
+</active-response>
+```
+
+
+
+Règle n°5710 : sshd: Attempt to login using a non-existent user
+
+Règle n°5711 : sshd: Useless/Duplicated SSHD message without a user/ip
+
+Règle n°5763 : sshd: brute force trying to get access to the system. Authentication failed
+
+Règle n°5719 : sshd: Multiple access attempts using a denied user
+
+Règle n°5720 : sshd: Multiple authentication failures
+
+Règle n° 100200 : Potential SSH Scan has been detected => Il s'agit d'une règle custom, dont je parle juste après
+
+### Règles custom
+
+Pour créer des règles custom, il faut modifier le fichier ```local_rules.xml``` via le dashboard ou depuis le conteneur. Pour ce projet j'ai modifié 4 règles déjà existantes pour changer le niveau d'aller de niveau 3 au niveau 12 : les règles concernées sont la déconnexion, suppression et arrêt d'un agent, ainsi que l'ouverture d'une session avec PAM :
+```
+<group name="ossec,">
+  <rule id="504" level="12" overwrite="yes">
+    <if_sid>500</if_sid>
+    <match>Agent disconnected</match>
+    <description>Wazuh agent disconnected.</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AU.5,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,</group>
+  </rule>
+
+  <rule id="505" level="12" overwrite="yes">
+    <if_sid>500</if_sid>
+    <match>Agent removed</match>
+    <description>Wazuh agent removed.</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AU.5,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,</group>
+  </rule>
+
+  <rule id="506" level="12" overwrite="yes">
+    <if_sid>500</if_sid>
+    <match>Agent stopped</match>
+    <description>Wazuh agent stopped.</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AU.5,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,</group>
+  </rule>
+</group>
+
+<group name="pam,syslog,">
+  <rule id="5501" level="12" overwrite="yes">
+    <if_sid>5500</if_sid>
+    <match>session opened for user </match>
+    <description>PAM: Login session opened.</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.8,gpg13_7.9,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+</group>
+```
+
+Enfin j'ai ajouté une règle custom liée à Suricata qui déclenche un banissement (voir [l'active-response](#active-response)) lorsqu'un potentiel scan SSH est détecté :
+```
+<group name="custom_active_response_rules,">
+  <rule id="100200" level="5">
+    <if_sid>86600</if_sid>
+    <field name="event_type">^alert$</field>
+    <match>ET SCAN Potential SSH Scan</match>
+    <description>Potential SSH Scan has been detected. </description>
+    <mitre>
+      <id>T1498</id>
+    </mitre>
+  </rule>
+</group>
+```
+
+### Configuration générale
+
+Pour ce qui est de la configuration générale, c'est-à-dire l'activation des différents modules, il faut toujours modifier ```wazuh-docker/single-node/config/wazuh_cluster/wazuh_manager.conf```. Voici donc ce que j'ai activé dans ce projet :
+
+
+
+- Le rootcheck
+```
+<rootcheck>
+  <disabled>no</disabled>
+  <check_files>yes</check_files>
+  <check_trojans>yes</check_trojans>
+  <check_dev>yes</check_dev>
+  <check_sys>yes</check_sys>
+  <check_pids>yes</check_pids>
+  <check_ports>yes</check_ports>
+  <check_if>yes</check_if>
+...
+```
+
+- Les scans SCA
+```
+<sca>
+  <enabled>yes</enabled>
+...
+```
+
+- La détection de vulnérabilité
+```
+<vulnerability-detector>
+  <enabled>yes</enabled>
+...
+<!-- Ubuntu OS vulnerabilities -->
+  <provider name="canonical">
+    <enabled>yes</enabled>
+...
+```
+
+- Monitoring d'intégrité des fichiers
+```
+<syscheck>
+  <disabled>no</disabled>
+...
+```
+
+
+
+## CIS
+
+Voici les modifications que j'ai apporté au système suite aux résultats du test CIS, j'aurais voulu en faire plus mais le temps m'a manqué.
+
+### Mettre le serveur à l'heure
+
+```
+timedatectl set-timezone Europe/Paris
+```
+
+### ID : 28668 Ensure inactive password lock is 30 days or less
+
+Modifier /etc/default/useradd pour y ajouter :
+```
+INACTIVE=30
+```
+
+On peut aussi utiliser `chage --inactive 30 <user>` pour ajouter ce paramètre sur les utilisateurs déjà crées.
+
+### ID : 28666 Ensure password expiration is 365 days or less
+
+Modifier /etc/login.defs pour y ajouter/modifier :
+```
+PASS_MAX_DAYS	365
+```
+
+On peut aussi utiliser `chage --maxdays 365 <user>` pour ajouter ce paramètre sur les utilisateurs déjà crées.
+
+### ID : 28665 Ensure minimum days between password changes is configured
+
+Modifier /etc/login.defs pour y ajouter/modifier :
+```
+PASS_MIN_DAYS	1
+```
+
+On peut aussi utiliser `chage --mindays 1 <user>` pour ajouter ce paramètre sur les utilisateurs déjà crées.
+
+
 
 # Problèmes rencontrés
 
-- Docker rootles :
+- Docker rootless :
 
 J'ai essayé de mettre en place docker "rootless" pour le démon, de sorte à ce que si un attaquant parvient à s'introduire dans le conteneur via la site internet par exemple puis à s'en extraire pour arriver sur la machine hôte, il n'obtienne pas les droits root.
 
@@ -416,7 +641,17 @@ Il pourrait être intéressant de mettre le dashboard de Wazuh derrière le reve
 
 Pour empêcher qu'un assaillant, ayant réussi à pénétrer dans le conteneur Docker et à en échapper, puisse obtenir les privilèges root, il serait judicieux de basculer le démon Docker en mode "rootless". Cependant, étant donné que Wazuh ne prend pas en charge cette configuration, une solution envisageable serait de faire fonctionner un démon en mode "rootless" pour le conteneur du site, tandis qu'un démon classique serait maintenu pour Wazuh.
 
+
+
+- Plus se concenter sur les testes CIS :
+
+Nous nous sommes principalement concentré sur les fonctionnalités principales du projet mais notre manque de connaissance totale au début du projet nous a fait perdre un temps précieux, nous nous sommes donc peu attardés sur ce genre de hardening, ce qui serait à améliorer.
+
 # Conclusion
+
+Ce projet nous a offert une opportunité précieuse de nous immerger dans le domaine de la sécurité défensive, en mettant en pratique l'intégration de systèmes de sécurité dans une infrastructure. Malgré nos connaissances limitées au début du projet, nous avons progressivement acquis des compétences essentielles, allant du hardening des configurations et de poste au développement de sites web avec l'intégration de bonnes pratiques de sécurité. Ces apprentissages ont été le fruit d'un investissement conséquent en temps et en effort, mais ils se sont avérés être un véritable enrichissement. Les compétences acquises, telles que les bonnes pratiques de développement, la conteneurisation, le déploiement d'un NIDS/NIPS, la mise en place d'un SIEM et la gestion des règles de détection, seront des atouts précieux pour nos futures carrières. Ce projet a été une expérience formatrice et stimulante, nous permettant de franchir des étapes significatives dans notre apprentissage et notre développement professionnel.
+
+
 
 # Annexes
 
@@ -473,4 +708,27 @@ HostKeyAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ss
 KexAlgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha256
 ```
 
-Sources et fichiers de conf
+## Postfix docker-compose
+```
+  postfix:
+    build: 
+      context: postfix
+      dockerfile: postfix.Dockerfile
+    command: bash -c "service postfix restart && sleep infinity"
+```
+
+## postfix.Dockerfile
+```
+FROM ubuntu:22.04
+RUN apt update
+RUN echo 1 | apt-get install postfix -y
+RUN apt-get install mailutils libsasl2-2 ca-certificates libsasl2-modules -y
+COPY main.cf /etc/postfix/main.cf
+COPY sasl_passwd /etc/postfix/sasl_passwd
+RUN postmap /etc/postfix/sasl_passwd
+RUN chmod 400 /etc/postfix/sasl_passwd
+RUN chown root:root /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
+RUN chmod 0600 /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
+```
+
+Liens github de notre projet : https://github.com/MrZerkeur/B2-SSI-InfraHardening/tree/main
